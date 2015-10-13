@@ -58,27 +58,42 @@ public class ScheduleManager {
 	/**
 	 * Add an appointment.
 	 */
-	public void addAppointment() {
+	public void addAppointment() 
+	{
 		Appointment appointment = this.inputAppointment();
-		if (appointment != null) {
+		if (appointment != null) 
+		{
 			Day availableDay = this.myIHM.askAvailableDay();
-			if (availableDay != null) {
+			
+			if (availableDay != null) 
+			{
 				int duration = this.myIHM.askDurationOfEvent();
-				if (duration != 0) {
-					List<TimeSlot> freeTimeSlot = this.searchTimeSlot(
-							availableDay, duration);
-					if (freeTimeSlot.isEmpty()) {
+				
+				if (duration != 0) 
+				{
+					List<TimeSlot> freeTimeSlot = this.searchTimeSlot(availableDay, duration);
+					
+					if (freeTimeSlot.isEmpty()) 
+					{
 						this.myIHM.freeTimeSlotIsEmpty();
-					} else {
+					} 
+					else 
+					{
 						TimeSlot answer = this.askAnswer(freeTimeSlot);
-						if (answer != null) {
+						
+						if (answer != null) 
+						{
 							appointment.setTimeSlot(answer);
 							addEventInASortList(appointment);
 							this.myIHM.displayFinishedHandling(appointment);
-							try {
+							
+							try 
+							{
 								this.fileManagerOfEvents
 										.writeEvents(this.events);
-							} catch (IOException e) {
+							} 
+							catch (IOException e) 
+							{
 								e.printStackTrace();
 							}
 						}
@@ -137,17 +152,19 @@ public class ScheduleManager {
 	 * @param isMorning
 	 * @return a list of TimeSlot
 	 */
-	private List<TimeSlot> possibleEvents(Day day, int duration,
-			boolean isMorning) {
-		List<ScheduledEvent> eventsOnSameDay = this
-				.getAllEventsThatAreOnSameDay(day, isMorning);
+	private List<TimeSlot> possibleEvents(Day day, int duration, boolean isMorning)
+	{
+		List<ScheduledEvent> eventsOnSameDay = this.getAllEventsThatAreOnSameDay(day, isMorning);
+		
 		List<TimeSlot> freeTimeSlots = new LinkedList<TimeSlot>();
-		if (eventsOnSameDay.isEmpty()) {
+		
+		if (eventsOnSameDay.isEmpty()) 
+		{
 			// Case where all the morning is free.
 			return this.GetAllTimeSlotsInTheDay(day, duration, isMorning);
 		}
-		freeTimeSlots = this.getAllFreeTimeSlotsInTheDay(eventsOnSameDay,
-				duration, day, isMorning);
+		
+		freeTimeSlots = this.getAllFreeTimeSlotsInTheDay(eventsOnSameDay, duration, day, isMorning);
 		return freeTimeSlots;
 	}
 
@@ -160,25 +177,29 @@ public class ScheduleManager {
 	 * @param isMorning
 	 * @return a list of TimeSlot
 	 */
-	private List<TimeSlot> GetAllTimeSlotsInTheDay(Day day, int duration,
-			boolean isMorning) {
+	private List<TimeSlot> GetAllTimeSlotsInTheDay(Day day, int duration, boolean isMorning) 
+	{
 		List<TimeSlot> list = new LinkedList<TimeSlot>();
 		int hour = 14;
-		DateTime startTime = new DateTime(day.getStartTime().getYear(), day
-				.getStartTime().getMonthOfYear(), day.getStartTime()
-				.getDayOfMonth(), hour, 0);
-		if (isMorning) {
+		DateTime startTime = new DateTime(day.getStartTime().getYear(), day.getStartTime().getMonthOfYear(), day.getStartTime().getDayOfMonth(), hour, 0);
+		if (isMorning) 
+		{
 			hour = 12;
 			startTime = day.getStartTime();
 		}
+		
 		DateTime endTime = startTime.plusMinutes(duration);
 		DateTime endOfHalfDay = day.getEndTime();
-		if (isMorning) {
+		
+		if (isMorning) 
+		{
 			endOfHalfDay = new DateTime(day.getStartTime().getYear(), day
 					.getStartTime().getMonthOfYear(), day.getStartTime()
 					.getDayOfMonth(), hour, 0);
 		}
-		while (endTime.isBefore(endOfHalfDay) || endTime.isEqual(endOfHalfDay)) {
+		
+		while (endTime.isBefore(endOfHalfDay) || endTime.isEqual(endOfHalfDay)) 
+		{
 			list.add(new TimeSlot(startTime, endTime));
 			startTime = endTime;
 			endTime = startTime.plusMinutes(duration);
@@ -194,63 +215,78 @@ public class ScheduleManager {
 	 * @param day
 	 * @return a list of time slots
 	 */
-	private List<TimeSlot> getAllFreeTimeSlotsInTheDay(
-			List<ScheduledEvent> eventsOnSameDay, int duration, Day day,
-			boolean isMorning) {
+	private List<TimeSlot> getAllFreeTimeSlotsInTheDay(List<ScheduledEvent> eventsOnSameDay, int duration, Day day, boolean isMorning) 
+	{
 		List<TimeSlot> freeTimeSlots = new LinkedList<TimeSlot>();
+		
 		// Case of the first event in the list.
-		DateTime dateOfTheEvent = eventsOnSameDay.get(0).getTimeSlot()
-				.getStartTime();
-		DateTime dateOfTheEventMinusDuration = dateOfTheEvent
-				.minusMinutes(duration);
+		DateTime dateOfTheEvent;
+		DateTime dateOfTheEventMinusDuration;
+		DateTime date;
+		searchTimeSlotBeforeFirstEvent(eventsOnSameDay, duration, day, isMorning, freeTimeSlots);
 
-		DateTime date = new DateTime(day.getStartTime().getYear(), day
-				.getStartTime().getMonthOfYear(), day.getStartTime()
-				.getDayOfMonth(), 14, 0);
-		if (isMorning) {
+		// Case of the others.
+		DateTime dateOfThePreviousEvent;
+		searchTimeSlotInTheMiddle(eventsOnSameDay, duration, freeTimeSlots);
+
+		// Case of the last.
+		dateOfThePreviousEvent = eventsOnSameDay.get(eventsOnSameDay.size() - 1).getTimeSlot().getEndTime();
+		DateTime dateOfTheEventPlusDuration = dateOfThePreviousEvent.plusMinutes(duration);
+		date = day.getEndTime();
+		
+		searchTimeSlotAfterTheLastEvent(day, isMorning, freeTimeSlots, date,
+				dateOfThePreviousEvent, dateOfTheEventPlusDuration);
+		
+		return freeTimeSlots;
+	}
+
+	private void searchTimeSlotAfterTheLastEvent(Day day, boolean isMorning, List<TimeSlot> freeTimeSlots, DateTime date, DateTime dateOfThePreviousEvent, DateTime dateOfTheEventPlusDuration) 
+	{
+		if (isMorning) 
+		{
+			date = new DateTime(day.getStartTime().getYear(), day.getStartTime().getMonthOfYear(), day.getStartTime().getDayOfMonth(), 12, 0);
+		}
+		
+		if (dateOfTheEventPlusDuration.isBefore(date) || dateOfTheEventPlusDuration.isEqual(date)) 
+		{
+			freeTimeSlots.add(new TimeSlot(dateOfThePreviousEvent, dateOfTheEventPlusDuration));
+		}
+	}
+
+	private void searchTimeSlotInTheMiddle(List<ScheduledEvent> eventsOnSameDay, int duration, List<TimeSlot> freeTimeSlots) 
+	{
+		DateTime dateOfTheEvent;
+		DateTime dateOfTheEventMinusDuration;
+		DateTime dateOfThePreviousEvent = new DateTime();
+		
+		for (int index = 1; index < eventsOnSameDay.size(); index++) 
+		{
+			dateOfThePreviousEvent = eventsOnSameDay.get(index - 1).getTimeSlot().getEndTime();
+			dateOfTheEvent = eventsOnSameDay.get(index).getTimeSlot().getStartTime();
+			dateOfTheEventMinusDuration = dateOfTheEvent.minusMinutes(duration);
+
+			if (dateOfTheEventMinusDuration.isAfter(dateOfThePreviousEvent) || dateOfTheEventMinusDuration.isEqual(dateOfThePreviousEvent)) 
+			{
+				freeTimeSlots.add(new TimeSlot(dateOfTheEventMinusDuration, dateOfTheEvent));
+			}
+		}
+	}
+
+	private void searchTimeSlotBeforeFirstEvent(List<ScheduledEvent> eventsOnSameDay, int duration, Day day, boolean isMorning, List<TimeSlot> freeTimeSlots) 
+	{
+		DateTime dateOfTheEvent = eventsOnSameDay.get(0).getTimeSlot().getStartTime();
+		DateTime dateOfTheEventMinusDuration = dateOfTheEvent.minusMinutes(duration);
+		DateTime date = new DateTime(day.getStartTime().getYear(), day.getStartTime().getMonthOfYear(), day.getStartTime().getDayOfMonth(), 14, 0);
+		
+		if (isMorning) 
+		{
 			date = day.getStartTime();
 		}
 
-		if (dateOfTheEventMinusDuration.isAfter(date)
-				|| dateOfTheEventMinusDuration.isEqual(date)) {
-			freeTimeSlots.add(new TimeSlot(dateOfTheEventMinusDuration,
-					dateOfTheEvent));
+		if (dateOfTheEventMinusDuration.isAfter(date) || dateOfTheEventMinusDuration.isEqual(date)) 
+		{
+			freeTimeSlots.add(new TimeSlot(dateOfTheEventMinusDuration, dateOfTheEvent));
 		}
-
-		// Case of the others.
-		DateTime dateOfThePreviousEvent = new DateTime();
-		for (int index = 1; index < eventsOnSameDay.size(); index++) {
-			dateOfThePreviousEvent = eventsOnSameDay.get(index - 1)
-					.getTimeSlot().getEndTime();
-			dateOfTheEvent = eventsOnSameDay.get(index).getTimeSlot()
-					.getStartTime();
-			dateOfTheEventMinusDuration = dateOfTheEvent.minusMinutes(duration);
-
-			if (dateOfTheEventMinusDuration.isAfter(dateOfThePreviousEvent)
-					|| dateOfTheEventMinusDuration
-							.isEqual(dateOfThePreviousEvent)) {
-				freeTimeSlots.add(new TimeSlot(dateOfTheEventMinusDuration,
-						dateOfTheEvent));
-			}
-		}
-
-		// Case of the last.
-		dateOfThePreviousEvent = eventsOnSameDay
-				.get(eventsOnSameDay.size() - 1).getTimeSlot().getEndTime();
-		DateTime dateOfTheEventPlusDuration = dateOfThePreviousEvent
-				.plusMinutes(duration);
-		date = day.getEndTime();
-		if (isMorning) {
-			date = new DateTime(day.getStartTime().getYear(), day
-					.getStartTime().getMonthOfYear(), day.getStartTime()
-					.getDayOfMonth(), 12, 0);
-		}
-		if (dateOfTheEventPlusDuration.isBefore(date)
-				|| dateOfTheEventPlusDuration.isEqual(date)) {
-			freeTimeSlots.add(new TimeSlot(dateOfThePreviousEvent,
-					dateOfTheEventPlusDuration));
-		}
-		return freeTimeSlots;
 	}
 
 	/**

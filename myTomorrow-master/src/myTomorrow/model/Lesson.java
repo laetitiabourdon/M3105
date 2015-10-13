@@ -131,14 +131,18 @@ public class Lesson extends ScheduledEvent {
 	 * @return index (-1 if not found)
 	 */
 	public int personIndex(Person person) {
-		if (!this.personsList.isEmpty()) {
+		if (!this.personsList.isEmpty()) 
+		{
 			int index = 0;
+			
 			Person currentPerson = this.personsList.get(index);
-			while (index + 1 < this.personsList.size()
-					&& !currentPerson.equals(person)) {
+			
+			while (index + 1 < this.personsList.size() && !currentPerson.equals(person)) 
+			{
 				index++;
 				currentPerson = this.personsList.get(index);
 			}
+			
 			if (currentPerson.equals(person))
 				return index;
 		}
